@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import operator
 import os
+import pandas as pd
 matplotlib.use('TkAgg')
 
 
@@ -92,6 +93,61 @@ def showdatas(datingDataMat,datingLabels):
     plt.show()
     
     
+def autonorm(dataSet:pd.DataFrame):
+    minVals=dataSet.min(0)
+    maxVals=dataSet.max(0)
+    ranges=maxVals-minVals
+    normDataSet=np.zeros(np.shape(dataSet))
+    m=dataSet.shape[0]
+    normDataSet=dataSet-np.tile(minVals,(m,1))
+    normDataSet=normDataSet/np.tile(ranges,(m,1))
+    return normDataSet,ranges,minVals
+
+def classify0(inX,dataset,labels,k):
+    dataSetSize=dataset.shape[0]
+    diffMat=np.tile(inX,(dataSetSize,1))-dataset
+    sqDiffMat=diffMat**2
+    sqDistances=sqDiffMat.sum(axis=1)
+    distances=sqDistances**0.5
+    sortedDistIndices=distances.argsort()
+    classCount={}
+    for i in range(k):
+        voteIlabel=labels[sortedDistIndices[i]]
+        classCount[voteIlabel]=classCount.get(voteIlabel,0)+1
+    sortedClassCount=sorted(classCount.items(),key=operator.itemgetter(1),reverse=True)
+    return sortedClassCount[0][0]
+
+
+def datingClassTest():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # 构建数据文件的完整路径
+    data_file = os.path.join(script_dir, 'datingTestSet.txt')
+    datingDataMat,datingLabels=file_to_matrix(data_file)
+    hoRatio=0.1
+    norMat,ranges,minVals=autonorm(datingDataMat)
+    m=norMat.shape[0]
+    numTestVecs=int(m*hoRatio)
+    errorCount=0
+
+    for i in range(numTestVecs):
+        classifierResult=classify0(norMat[i,:],norMat[numTestVecs:m,:],datingLabels[numTestVecs:m],4)
+        print(f"the classifier came back with:{classifierResult},the real answer is:{datingLabels[i]}")
+        if classifierResult!=datingLabels[i]:
+            errorCount+=1
+    print(f"the total error rate is:{errorCount/float(numTestVecs)*100}")
+
+
+def classifyPerson():
+    resultList=['dislike','smallDoses','LargeDoses']
+    precentats=float(input("precentats of time spent playing video games?"))
+    ffMiles=float(input("frequent flier miles earned per year?"))
+    iceCream=float(input("liters of ice cream consumed per week?"))
+    datingDataMat,datingLabels=file_to_matrix(data_file)
+    norMat,ranges,minVals=autonorm(datingDataMat)
+    inArr=np.array([ffMiles,precentats,iceCream])
+    classifierResult=classify0((inArr-minVals)/ranges,norMat,datingLabels,3)
+    print(f"You will probably like this person:{resultList[classifierResult-1]}")
+    
 if __name__=="__main__":
     # 获取脚本所在目录
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -99,4 +155,7 @@ if __name__=="__main__":
     data_file = os.path.join(script_dir, 'datingTestSet.txt')
     # 使用完整路径
     datingDataMat,datingLabels=file_to_matrix(data_file)
-    showdatas(datingDataMat,datingLabels)
+    afternorm=autonorm(dataSet=datingDataMat)
+    datingClassTest()
+    # print(afternorm)
+    # showdatas(datingDataMat,datingLabels)
